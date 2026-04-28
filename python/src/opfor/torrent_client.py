@@ -128,7 +128,6 @@ def start_torrent(td: TorrentDownload, cancel_event: threading.Event) -> None:
 
 
 MAX_CONCURRENT = 5
-DOWNLOAD_TIMEOUT_SEC = 30 * 60
 
 
 def handle_download_session(entries: list[TorrentEntry], out_dir: str | Path) -> None:
