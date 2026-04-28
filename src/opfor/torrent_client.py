@@ -44,14 +44,53 @@ def _import_libtorrent():
     except ImportError as e:
         raise RuntimeError(
             "libtorrent is required for downloads. Install it with: "
-            "`sudo apt install python3-libtorrent` on Debian/Ubuntu."
+            "`sudo apt install python3-libtorrent` on Debian/Ubuntu, "
+            "or configure the qBittorrent backend with "
+            "`opfor config qbittorrent --url http://localhost:8080 "
+            "--username <user> --password <pwd>`."
         ) from e
     _lt_module = lt
     return lt
 
 
+def _libtorrent_available() -> bool:
+    try:
+        _import_libtorrent()
+        return True
+    except RuntimeError:
+        return False
+
+
 def start_torrent(td: TorrentDownload, cancel_event: threading.Event) -> None:
-    """Download a single torrent. Raises on failure."""
+    """Download a single torrent. Raises on failure.
+
+    Dispatches to either the libtorrent or the qBittorrent backend based
+    on configuration. If qBittorrent is explicitly enabled, it is used.
+    Otherwise libtorrent is preferred; if it is not importable but a
+    qBittorrent URL is configured, we fall back to qBittorrent.
+    """
+    cfg = load_config()
+    qbt = cfg.qbittorrent
+
+    use_qbt = bool(qbt.enabled and qbt.url)
+    if not use_qbt and qbt.url and not _libtorrent_available():
+        # Fallback when libtorrent isn't installed but qBittorrent is configured.
+        use_qbt = True
+
+    if use_qbt:
+        from . import qbittorrent_client
+
+        log(False, "Using qBittorrent backend at %s", qbt.url)
+        qbittorrent_client.start_torrent(td, cancel_event)
+        return
+
+    _start_torrent_libtorrent(td, cancel_event)
+
+
+def _start_torrent_libtorrent(
+    td: TorrentDownload, cancel_event: threading.Event
+) -> None:
+    """libtorrent implementation of :func:`start_torrent`."""
     lt = _import_libtorrent()
 
     cfg = load_config()

@@ -27,9 +27,14 @@ and exposes the same feature set:
 
 - Python 3.11 or newer
 - `git` (used to clone the metadata repo)
-- `libtorrent` Python bindings, **only required if you want to download**
-  torrents (`opfor download`). Listing, setDir, sync, info, etc. all work
-  without it.
+- A torrent backend, **only required if you want to download** torrents
+  (`opfor download`). Listing, setDir, sync, info, etc. all work without
+  one. Two backends are supported:
+  - **libtorrent** (`python3-libtorrent`) — in-process, no extra service
+    required.
+  - **qBittorrent Web API** — talks to a running qBittorrent instance over
+    HTTP. Recommended when you cannot install `python3-libtorrent` (e.g.
+    no `sudo` on the machine).
 
 On Debian/Ubuntu:
 
@@ -42,6 +47,44 @@ On Arch:
 ```bash
 sudo pacman -S libtorrent-rasterbar python-libtorrent git
 ```
+
+### Download backend
+
+`opfor download` uses **libtorrent** by default. If `python3-libtorrent`
+is not available on your system, point `opfor` at a running qBittorrent
+instance instead — no extra Python package is needed.
+
+1. In qBittorrent, enable the Web UI (*Tools → Options → Web UI*) and
+   note the URL (e.g. `http://localhost:8080`) plus the username and
+   password.
+2. Configure `opfor`:
+
+   ```bash
+   opfor config qbittorrent \
+       --url http://localhost:8080 \
+       --username admin --password secret \
+       --enable
+   ```
+
+   Use `opfor config qbittorrent --show` to inspect the current settings.
+
+If `--enable` is set, the qBittorrent backend is always used. Otherwise,
+`opfor` falls back to qBittorrent automatically when libtorrent is not
+importable but a `qbittorrent.url` is configured. Files are downloaded
+into the same `opfor-tmp-<id>` temp directory used by the libtorrent
+backend, so placement and cleanup are unchanged.
+
+> 🔐 The config file (`~/.config/opforjellyfin/config.json`) is written
+> with `0600` permissions because the qBittorrent password is stored
+> there in plain text. If you'd rather keep the password out of the file
+> entirely, leave it unset and export it instead:
+>
+> ```bash
+> export OPFOR_QBT_PASSWORD=secret
+> ```
+>
+> When set, this environment variable overrides the value loaded from
+> the config file.
 
 ### Install the CLI
 
@@ -121,7 +164,8 @@ src/opfor/
 ├── scraper.py          # httpx + BeautifulSoup torrent listing
 ├── metadata.py         # git clone, indexing, cache, status
 ├── matcher.py          # video file → metadata folder placement
-├── torrent_client.py   # libtorrent download orchestration
+├── torrent_client.py   # libtorrent download orchestration + backend dispatch
+├── qbittorrent_client.py # qBittorrent Web API download backend
 ├── ui.py               # rich-based UI
 └── logger.py           # debug.log
 tests/

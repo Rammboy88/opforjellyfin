@@ -380,6 +380,71 @@ def download_cmd(keys: tuple[int, ...], forcekey: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# config (qbittorrent)
+# ---------------------------------------------------------------------------
+
+
+@cli.group("config")
+def config_cmd() -> None:
+    """Manage opfor configuration."""
+
+
+@config_cmd.command("qbittorrent")
+@click.option("--url", default=None, help="qBittorrent Web UI URL, e.g. http://localhost:8080")
+@click.option("--username", default=None, help="qBittorrent Web UI username")
+@click.option("--password", default=None, help="qBittorrent Web UI password")
+@click.option("--category", default=None, help="qBittorrent category (default: opfor)")
+@click.option(
+    "--enable/--disable",
+    "enabled",
+    default=None,
+    help="Enable or disable the qBittorrent backend",
+)
+@click.option("--show", is_flag=True, help="Show current qBittorrent configuration")
+def config_qbittorrent_cmd(
+    url: str | None,
+    username: str | None,
+    password: str | None,
+    category: str | None,
+    enabled: bool | None,
+    show: bool,
+) -> None:
+    """Configure the qBittorrent Web API download backend.
+
+    With qBittorrent already running and its Web UI enabled, this lets
+    ``opfor download`` work without ``python3-libtorrent`` being installed.
+
+    Example:
+
+        opfor config qbittorrent --url http://localhost:8080 \\
+            --username admin --password secret --enable
+    """
+    cfg = load_config()
+    if show and all(opt is None for opt in (url, username, password, category, enabled)):
+        q = cfg.qbittorrent
+        click.echo("🧲 qBittorrent backend configuration:")
+        click.echo(f"   enabled : {q.enabled}")
+        click.echo(f"   url     : {q.url or '(not set)'}")
+        click.echo(f"   username: {q.username or '(not set)'}")
+        click.echo(f"   password: {'***' if q.password else '(not set)'}")
+        click.echo(f"   category: {q.category}")
+        return
+
+    if url is not None:
+        cfg.qbittorrent.url = url
+    if username is not None:
+        cfg.qbittorrent.username = username
+    if password is not None:
+        cfg.qbittorrent.password = password
+    if category is not None:
+        cfg.qbittorrent.category = category or "opfor"
+    if enabled is not None:
+        cfg.qbittorrent.enabled = enabled
+    save_config(cfg)
+    click.echo("✅ qBittorrent configuration updated.")
+
+
+# ---------------------------------------------------------------------------
 # entrypoint
 # ---------------------------------------------------------------------------
 

@@ -33,10 +33,27 @@ class ScraperConfig:
 
 
 @dataclass
+class QBittorrentConfig:
+    """Configuration for the optional qBittorrent Web API backend.
+
+    When ``enabled`` is true (or ``url`` is set and libtorrent is missing),
+    downloads are handed off to a running qBittorrent instance via its
+    Web API instead of using the in-process ``libtorrent`` library.
+    """
+
+    enabled: bool = False
+    url: str = ""
+    username: str = ""
+    password: str = ""
+    category: str = "opfor"
+
+
+@dataclass
 class Config:
     target_dir: str = ""
     github_repo: str = "tissla/one-pace-jellyfin"
     source: ScraperConfig = field(default_factory=ScraperConfig)
+    qbittorrent: QBittorrentConfig = field(default_factory=QBittorrentConfig)
 
 
 @dataclass

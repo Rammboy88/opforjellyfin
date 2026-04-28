@@ -6,14 +6,16 @@ Stores JSON at ``$XDG_CONFIG_HOME/opforjellyfin/config.json`` (Linux default
 
 from __future__ import annotations
 
+import os
 import json
+import stat
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
 from platformdirs import user_config_dir
 
-from .types import Config, ScraperConfig, ScraperFields, ValidationConfig
+from .types import Config, QBittorrentConfig, ScraperConfig, ScraperFields, ValidationConfig
 
 
 APP_NAME = "opforjellyfin"
@@ -43,6 +45,13 @@ def _config_to_dict(cfg: Config) -> dict[str, Any]:
             "fields": asdict(cfg.source.fields),
             "validation": {"required_in_title": cfg.source.validation.required_in_title},
         },
+        "qbittorrent": {
+            "enabled": cfg.qbittorrent.enabled,
+            "url": cfg.qbittorrent.url,
+            "username": cfg.qbittorrent.username,
+            "password": cfg.qbittorrent.password,
+            "category": cfg.qbittorrent.category,
+        },
     }
 
 
@@ -50,6 +59,7 @@ def _dict_to_config(data: dict[str, Any]) -> Config:
     src = data.get("source") or {}
     fields_raw = src.get("fields") or {}
     val_raw = src.get("validation") or {}
+    qbt_raw = data.get("qbittorrent") or {}
     return Config(
         target_dir=data.get("target_dir", "") or "",
         github_repo=data.get("github_base_url", "tissla/one-pace-jellyfin") or "tissla/one-pace-jellyfin",
@@ -70,6 +80,13 @@ def _dict_to_config(data: dict[str, Any]) -> Config:
                 required_in_title=val_raw.get("required_in_title", "")
             ),
         ),
+        qbittorrent=QBittorrentConfig(
+            enabled=bool(qbt_raw.get("enabled", False)),
+            url=qbt_raw.get("url", "") or "",
+            username=qbt_raw.get("username", "") or "",
+            password=qbt_raw.get("password", "") or "",
+            category=qbt_raw.get("category", "opfor") or "opfor",
+        ),
     )
 
 
@@ -83,7 +100,14 @@ def ensure_config_exists() -> Path:
 def load_config() -> Config:
     path = ensure_config_exists()
     data = json.loads(path.read_text(encoding="utf-8"))
-    return _dict_to_config(data)
+    cfg = _dict_to_config(data)
+    # Allow overriding the qBittorrent password via an environment variable
+    # so users who don't want to persist it on disk can keep it out of the
+    # config file.
+    env_pwd = os.environ.get("OPFOR_QBT_PASSWORD")
+    if env_pwd:
+        cfg.qbittorrent.password = env_pwd
+    return cfg
 
 
 def save_config(cfg: Config) -> None:
@@ -92,3 +116,11 @@ def save_config(cfg: Config) -> None:
         json.dumps(_config_to_dict(cfg), indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
+    # The config file may contain secrets (e.g. qBittorrent Web UI
+    # password). Restrict permissions so only the owner can read/write it.
+    try:
+        os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+    except OSError:
+        # Best-effort: filesystems without POSIX perms (e.g. some networked
+        # mounts) may reject chmod; the JSON itself was still written.
+        pass
