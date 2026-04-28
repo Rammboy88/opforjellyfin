@@ -140,22 +140,22 @@ def _find_season_for_chapter(
     # seasons' ranges overlap (e.g. Gaimon's "42-42" sits inside Baratie's
     # "42-68"), this avoids returning the wrong season and dropping the file
     # into ``strayvideos`` because the title cannot be found.
-    range_match: tuple[str, SeasonIndex] | None = None
+    fallback_range_match: tuple[str, SeasonIndex] | None = None
     for name, season in index.seasons.items():
         for ep_range in season.episode_range:
             if normalize_dash(ep_range) == norm:
                 return name, season
         s_start, s_end = parse_range(season.range)
         if (
-            range_match is None
+            fallback_range_match is None
             and ch_start >= s_start
             and ch_end <= s_end
             and (s_start, s_end) != (-1, -1)
         ):
-            range_match = (name, season)
+            fallback_range_match = (name, season)
 
-    if range_match is not None:
-        return range_match
+    if fallback_range_match is not None:
+        return fallback_range_match
     return "", SeasonIndex()
 
 

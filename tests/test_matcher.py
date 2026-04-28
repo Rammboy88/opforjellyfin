@@ -64,7 +64,7 @@ def test_find_season_returns_empty_when_nothing_matches() -> None:
     assert season.episode_range == {}
 
 
-def test_match_and_place_routes_gaimon_to_season_4(
+def test_match_and_place_routes_gaimon_to_correct_season(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     target = tmp_path / "target"
