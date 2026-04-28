@@ -86,7 +86,10 @@ def match_and_place_video(
 def _find_metadata_match(file_name: str, index: MetadataIndex, ogcr: str) -> Path:
     cfg = load_config()
     base_dir = Path(cfg.target_dir)
-    stray = base_dir / "strayvideos" / ogcr / file_name
+    # ``match_and_place_video`` re-appends the source extension to whatever
+    # this function returns, so the stray path must be extension-less to
+    # avoid producing names like ``foo.mkv.mkv``.
+    stray = base_dir / "strayvideos" / ogcr / Path(file_name).stem
 
     season_folder, season_index = _find_season_for_chapter(ogcr, index)
     if not season_folder:
@@ -131,10 +134,28 @@ def _find_season_for_chapter(
     chapter_key: str, index: MetadataIndex
 ) -> tuple[str, SeasonIndex]:
     ch_start, ch_end = parse_range(chapter_key)
+    norm = normalize_dash(chapter_key)
+
+    # Prefer a season that explicitly indexes this chapter range. When two
+    # seasons' ranges overlap (e.g. Gaimon's "42-42" sits inside Baratie's
+    # "42-68"), this avoids returning the wrong season and dropping the file
+    # into ``strayvideos`` because the title cannot be found.
+    range_match: tuple[str, SeasonIndex] | None = None
     for name, season in index.seasons.items():
+        for ep_range in season.episode_range:
+            if normalize_dash(ep_range) == norm:
+                return name, season
         s_start, s_end = parse_range(season.range)
-        if ch_start >= s_start and ch_end <= s_end:
-            return name, season
+        if (
+            range_match is None
+            and ch_start >= s_start
+            and ch_end <= s_end
+            and (s_start, s_end) != (-1, -1)
+        ):
+            range_match = (name, season)
+
+    if range_match is not None:
+        return range_match
     return "", SeasonIndex()
 
 
