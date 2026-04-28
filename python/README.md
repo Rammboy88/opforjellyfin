@@ -1,0 +1,116 @@
+# 🏴‍☠️ opforjellyfin (Python port)
+
+Python 3.11 port of the [opforjellyfin](https://github.com/tissla/opforjellyfin)
+Go CLI for downloading and organising [One Pace](https://onepace.net) episodes
+into a Jellyfin library.
+
+This port targets **Linux** and reproduces the Go feature set:
+
+- `opfor list` – browse available One Pace torrents (with `-r`, `-t`, `-q`, `--minquality`, `-s`, `-v`)
+- `opfor download <key> [...]` – download one or more torrents (with `--forcekey`)
+- `opfor setDir <path>` – set the target/library directory and pull metadata (with `-f`)
+- `opfor sync` – update metadata from the metadata Git repo
+- `opfor info` – show library status and per-season video/.nfo counts
+- `opfor status` – show currently active downloads
+- `opfor clear` – clear temporary files / active-download cache
+- `opfor logs [-l N]` – tail `debug.log`
+
+## 🔧 Installation
+
+### Prerequisites
+
+- Python 3.11 or newer
+- `git` (used to clone the metadata repo)
+- `libtorrent` Python bindings, **only required if you want to download**
+  torrents (`opfor download`). Listing, setDir, sync, info, etc. all work
+  without it.
+
+On Debian/Ubuntu:
+
+```bash
+sudo apt install python3-libtorrent git
+```
+
+On Arch:
+
+```bash
+sudo pacman -S libtorrent-rasterbar python-libtorrent git
+```
+
+### Install the CLI
+
+From this folder:
+
+```bash
+pip install .
+```
+
+Or in editable mode for development:
+
+```bash
+pip install -e .[dev]
+```
+
+That installs an `opfor` command in your shell.
+
+> ℹ️ `python3-libtorrent` is intentionally **not** in `pyproject.toml`'s
+> `dependencies`: the binding is best installed via the system package
+> manager. If you install via `pip` in a virtualenv, you may need to use
+> `--system-site-packages` to make `libtorrent` visible to the venv.
+
+## 🚀 Usage
+
+```bash
+# 1. Choose where your One Pace library lives
+opfor setDir "/media/One Piece/One Pace"
+
+# 2. Browse available episodes
+opfor list
+opfor list -t Wano
+opfor list -r 15-20 --minquality 720p
+
+# 3. Download one or several keys
+opfor download 15 16 17
+
+# 4. Inspect your library
+opfor info -v
+opfor status
+```
+
+Run `opfor --help` or `opfor <subcommand> --help` for details.
+
+## 🧪 Tests
+
+```bash
+pip install -e .[dev]
+pytest
+```
+
+The test-suite ports the original Go parser tests to validate parity.
+
+## 🗂️ Layout
+
+```
+src/opfor/
+├── cli.py              # click commands
+├── config.py           # JSON config under ~/.config/opforjellyfin
+├── parsers.py          # chapter/range/regex parsers (1:1 with Go)
+├── fsutils.py          # thread-safe filesystem helpers
+├── types.py            # dataclasses
+├── downloads.py        # active-download registry
+├── scraper.py          # httpx + BeautifulSoup torrent listing
+├── metadata.py         # git clone, indexing, cache, status
+├── matcher.py          # video file → metadata folder placement
+├── torrent_client.py   # libtorrent download orchestration
+├── ui.py               # rich-based UI
+└── logger.py           # debug.log
+tests/
+└── test_parsers.py     # ports of parsers_test.go
+```
+
+## ⚠️ Disclaimer
+
+This tool is provided **as-is** with no guarantees or warranties. It downloads
+torrents and manipulates files – review the source code and test cautiously.
+This project is not affiliated with One Pace, Jellyfin, or any content
+providers.
