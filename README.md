@@ -2,163 +2,147 @@
 
 ![OpforJellyfin-logo](img/opforjellyfin.png)
 
-CLI-tool to automate download and organisation of [One Pace](https://onepace.net) episodes for **Jellyfin**!
+CLI tool to automate download and organisation of [One Pace](https://onepace.net)
+episodes for **Jellyfin**.
 
-> ✨ Torrent downloads  
-> ✨ Placement after Jellyfin standards  
+> ✨ Torrent downloads
+> ✨ Placement after Jellyfin standards
 > ✨ Matched to metadata shamelessly stolen from [SpykerNZ/one-pace-for-plex](https://github.com/SpykerNZ/one-pace-for-plex)
 
----
+This is a **Python 3.11** port of the original Go CLI. It targets **Linux**
+and exposes the same feature set:
 
-# 📢 NEWS 
-
-## Current known issues (v1.0.1):
-
-### Videos getting sorted into strayfolder?
-There are some issues with concurrency due to workers simultaneously trying to create directories. 
-This is fixed for next release.
-
-### Have-tag not working?
-The Have-tag does not work for bundles in this release. This is due to a misnamed variable. 
-This is fixed for next release.
-
-## Future plans:
-
-1. 'sort' command - To target a directory containing files, and renaming/sorting them into your metadata directory.
-
-2. Cache for downloadKeys. This will prevent mismatches between 'list' and 'download'.
-
-3. Seeder-mode.
-
-## 📸 Examples
-
-1. Example command:
-
-   ```bash
-   ./opfor list -t wano
-   ```
-
-   ![List view example](img/example1.png)
-
-2. Downloading episodes:
-
-   ```bash
-   ./opfor download 1 3
-   ```
-
-   ![Download view example](img/example2.png)
-
-3. Finished download shows file placement:
-
-   ![Finished download](img/example3.png)
-
-4. Keep track of what you have:
-
-   ```bash
-   ./opfor info
-   ```
-
-   ![Info](img/example4.png)
-
-5. And much more!
+- `opfor list` – browse available One Pace torrents (with `-r`, `-t`, `-q`, `--minquality`, `-s`, `-v`)
+- `opfor download <key> [...]` – download one or more torrents (with `--forcekey`)
+- `opfor setDir <path>` – set the target/library directory and pull metadata (with `-f`)
+- `opfor sync` – update metadata from the metadata Git repo
+- `opfor info` – show library status and per-season video/.nfo counts
+- `opfor status` – show currently active downloads
+- `opfor clear` – clear temporary files / active-download cache
+- `opfor logs [-l N]` – tail `debug.log`
 
 ## 🔧 Installation
 
-You can choose to either use one of the released versions or build from source yourself.
+### Prerequisites
 
-For this program to work, you need to have 'git' installed.
+- Python 3.11 or newer
+- `git` (used to clone the metadata repo)
+- `libtorrent` Python bindings, **only required if you want to download**
+  torrents (`opfor download`). Listing, setDir, sync, info, etc. all work
+  without it.
 
-### [Releases](https://github.com/tissla/opforjellyfin/releases/tag/v1.0.0)
+On Debian/Ubuntu:
 
-MacOS / Linux:
+```bash
+sudo apt install python3-libtorrent git
+```
 
-1. Download the file for your system.
+On Arch:
 
-2. Run `chmod +x opfor` to make the file runnable.
+```bash
+sudo pacman -S libtorrent-rasterbar python-libtorrent git
+```
 
-3. Run with `./opfor --help` to get started.
+### Install the CLI
 
-Windows:
+From the repository root:
 
-1. Download the .exe file.
+```bash
+pip install .
+```
 
-2. Run the file in Powershell or Windows Terminal with `.\opfor.exe --help` to get started.
+Or in editable mode for development:
 
-A terminal that supports unicode-characters is heavily recommended for best experience.
+```bash
+pip install -e .[dev]
+```
 
-### Build from source
+That installs an `opfor` command in your shell.
 
-1. **Install Go** (version ≥ 1.23)
+> ℹ️ `python3-libtorrent` is intentionally **not** in `pyproject.toml`'s
+> `dependencies`: the binding is best installed via the system package
+> manager. If you install via `pip` in a virtualenv, you may need to use
+> `--system-site-packages` to make `libtorrent` visible to the venv.
 
-2. Clone repo:
+## 🚀 Usage
 
-   ```bash
-   git clone https://github.com/tissla/opforjellyfin.git
-   cd opforjellyfin
-   ```
+```bash
+# 1. Choose where your One Pace library lives
+opfor setDir "/media/One Piece/One Pace"
 
-3. Build binary:
+# 2. Browse available episodes
+opfor list
+opfor list -t Wano
+opfor list -r 15-20 --minquality 720p
 
-   ```bash
-   go build -o opfor
-   ```
+# 3. Download one or several keys
+opfor download 15 16 17
 
-## 🚀 Usage (Start Here!)
+# 4. Inspect your library
+opfor info -v
+opfor status
+```
 
-1. Set your download directory before doing anything else. All your metadata will be stored here, and downloads will be matched to their proper folders.
-
-   ```bash
-   ./opfor setDir "/media/One Piece/One Pace"
-   ```
-
-1. Find all available episodes with 'list', or use the -t flag to specify a title, or -r flag to specify a chapter-range.
-
-   ```bash
-   ./opfor list
-   ./opfor list -t Wano
-   ./opfor list -r 15-20
-   ```
-
-1. Download a torrent by using the downloadkey, displayed in front of the title. You can download one or multiple at the same time.
-
-   ```bash
-   ./opfor download 15 16 17
-   ```
+Run `opfor --help` or `opfor <subcommand> --help` for details.
 
 ## 📦 Metadata
 
-I hope to continually update [metadata here!](https://github.com/tissla/one-pace-jellyfin)
+Metadata lives in a separate repo: [tissla/one-pace-jellyfin](https://github.com/tissla/one-pace-jellyfin).
 
-The 'sync' command allows the user to stay up to date with new additions to the metadata-repo.
+The `sync` command keeps you up to date with new additions to the
+metadata repo.
 
 ### Steps to make sure Jellyfin doesn't mess with the metadata
 
 1. Create a library with no metadata-fetchers active just for One Pace. Disable all of them!
+2. Make sure the show is **unlocked** for changes.
+3. Run `opfor sync` again if Jellyfin messed up your `.nfo` files before this.
+4. Rescan library with **unlocked** metadata and _no fetchers active_.
 
-1. Make sure the show is **unlocked** for changes.
+## 🧪 Tests
 
-1. Run `./opfor sync` again if Jellyfin messed up your .nfo files before this.
+```bash
+pip install -e .[dev]
+pytest
+```
 
-1. Rescan library with **unlocked** metadata and _no fetchers active_.
+The test-suite ports the original Go parser tests to validate parity.
+
+## 🗂️ Layout
+
+```
+src/opfor/
+├── cli.py              # click commands
+├── config.py           # JSON config under ~/.config/opforjellyfin
+├── parsers.py          # chapter/range/regex parsers
+├── fsutils.py          # thread-safe filesystem helpers
+├── types.py            # dataclasses
+├── downloads.py        # active-download registry
+├── scraper.py          # httpx + BeautifulSoup torrent listing
+├── metadata.py         # git clone, indexing, cache, status
+├── matcher.py          # video file → metadata folder placement
+├── torrent_client.py   # libtorrent download orchestration
+├── ui.py               # rich-based UI
+└── logger.py           # debug.log
+tests/
+└── test_parsers.py     # parser tests
+```
 
 ## 🤝 Contributions
 
-All pull requests are welcome. All criticisms are welcome. I'm here to build and to learn and to get better.
+All pull requests are welcome. All criticisms are welcome.
 
 ## ❤️ Acknowledgements
 
-- SpykerNZ for his metadata
-- Anacrolix awesome torrent lib
-- Charm team for cool stuff that I should use more
-- One Pace team for their amazing work!
+- SpykerNZ for the metadata
+- The One Pace team for their amazing work!
 
 ## ⚠️ Disclaimer
 
-This tool is provided **as-is** with no guarantees or warranties.  
-Use it at your own risk.
+This tool is provided **as-is** with no guarantees or warranties. It downloads
+torrents and manipulates files – review the source code and test cautiously.
+The author is not responsible for any damage to your system, loss of data, or
+violation of terms of service related to the use of this software.
 
-While care has been taken to avoid destructive behavior, this tool manipulates files and downloads torrents – always review the source code and test cautiously.  
-The author is not responsible for any damage to your system, loss of data, or violation of terms of service related to the use of this software.
-
-Also note:  
-This project is not affiliated with One Pace, Jellyfin, or any content providers. Please respect local laws and copyright regulations.
+This project is not affiliated with One Pace, Jellyfin, or any content
+providers. Please respect local laws and copyright regulations.
