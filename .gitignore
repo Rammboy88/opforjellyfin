@@ -1,25 +1,12 @@
-opforjellyfin
-opfor
-opfor-linux
-opfor-macos
-opfor.exe
+# Python build artefacts
+build/
+dist/
+**/__pycache__/
+**/*.egg-info/
+.pytest_cache/
 
-build.sh
-
+# Logs and local config/test directories
 *.log
-
 config.json
 testDir
 unused.old
-
-# Allow the Python port package (its module is named `opfor`).
-!/python/
-!/python/**
-
-# But still ignore Python build artefacts inside it.
-python/build/
-python/dist/
-python/**/__pycache__/
-python/**/*.egg-info/
-python/.pytest_cache/
-
